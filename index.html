@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>推箱子 · 现代精巧版</title>
+  <style>
+    :root {
+      --bg-page: #f4f6fb;
+      --bg-card: #ffffff;
+      --text-main: #1e293b;
+      --text-sub: #64748b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-light: #e0e7ff;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #f59e0b;
+      --board-bg: #e2e8f0;
+      --wall-bg: #475569;
+      --wall-top: #64748b;
+      --floor-bg: #f8fafc;
+      --target-color: #f43f5e;
+      --box-bg: #f59e0b;
+      --box-border: #d97706;
+      --box-done-bg: #10b981;
+      --box-done-border: #059669;
+      --player-bg: #6366f1;
+      --shadow-card: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --cell-size: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top left, #eef2ff 0%, #f4f6fb 50%, #f1f5f9 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 680px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 顶部标题与关卡选择 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .brand-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title p {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .level-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .icon-btn:hover:not(:disabled) {
+      background: #e2e8f0;
+    }
+
+    .icon-btn:active:not(:disabled) {
+      transform: scale(0.94);
+    }
+
+    .icon-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .level-select {
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* 统计数据栏 */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+    }
+
+    .stat-value.highlight {
+      color: var(--accent);
+    }
+
+    /* 棋盘舞台 */
+    .stage-wrapper {
+      background: #f1f5f9;
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 340px;
+      position: relative;
+      box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.05);
+      touch-action: none;
+    }
+
+    .board {
+      position: relative;
+      display: grid;
+      gap: 2px;
+      background: var(--board-bg);
+      padding: 6px;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border-radius: 8px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cell.void {
+      background: transparent;
+    }
+
+    .cell.wall {
+      background: var(--wall-bg);
+      box-shadow: inset 0 3px 0 var(--wall-top), 0 2px 4px rgba(15, 23, 42, 0.15);
+    }
+
+    .cell.wall::after {
+      content: "";
+      width: 65%;
+      height: 65%;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .cell.floor {
+      background: var(--floor-bg);
+    }
+
+    /* 目标点标记 */
+    .cell.target::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--target-color);
+      box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.18);
+      animation: pulseTarget 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseTarget {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.18); opacity: 1; }
+    }
+
+    /* 动态实体层（箱子与玩家，带平滑过渡） */
+    .entity-layer {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      pointer-events: none;
+    }
+
+    .box, .player {
+      position: absolute;
+      width: var(--cell-size);
+      height: var(--cell-size);
+      transition: transform 0.13s cubic-bezier(0.22, 1, 0.36, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .box-inner {
+      width: 82%;
+      height: 82%;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #fbbf24, var(--box-bg));
+      border: 2px solid var(--box-border);
+      box-shadow: 0 4px 8px rgba(217, 119, 6, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+    }
+
+    .box-inner::before {
+      content: "";
+      width: 45%;
+      height: 45%;
+      border: 2px solid rgba(180, 83, 9, 0.3);
+      border-radius: 4px;
+    }
+
+    .box.on-target .box-inner {
+      background: linear-gradient(145deg, #34d399, var(--box-done-bg));
+      border-color: var(--box-done-border);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.4);
+      transform: scale(1.03);
+    }
+
+    .box.on-target .box-inner::before {
+      content: "✓";
+      border: none;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player {
+      z-index: 3;
+    }
+
+    .player-inner {
+      width: 78%;
+      height: 78%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #818cf8, var(--player-bg));
+      box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform 0.12s ease;
+    }
+
+    /* 玩家眼睛指示朝向 */
+    .player-eyes {
+      display: flex;
+      gap: 5px;
+      transition: transform 0.12s ease;
+    }
+
+    .player-eye {
+      width: 5px;
+      height: 6px;
+      background: #ffffff;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .player-eye::after {
+      content: "";
+      width: 2.5px;
+      height: 2.5px;
+      background: #1e1b4b;
+      border-radius: 50%;
+      position: absolute;
+      top: 1.5px;
+      left: 1.5px;
+    }
+
+    .player.bump .player-inner {
+      animation: bumpAnim 0.18s ease;
+    }
+
+    @keyframes bumpAnim {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(0.86); }
+    }
+
+    /* 操作按钮栏 */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .btn {
+      flex: 1;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .kbd-hint {
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: var(--text-sub);
+      border: 1px solid #e2e8f0;
+    }
+
+    /* 移动端与屏幕虚拟方向键 */
+    .touch-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(2, 48px);
+      gap: 8px;
+    }
+
+    .dpad-btn {
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 12px;
+      color: var(--text-main);
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+      transition: background 0.1s ease, transform 0.08s ease;
+    }
+
+    .dpad-btn:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      color: var(--accent);
+    }
+
+    .dpad-btn:active {
+      transform: scale(0.92);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .dpad-up { grid-column: 2; grid-row: 1; }
+    .dpad-left { grid-column: 1; grid-row: 2; }
+    .dpad-down { grid-column: 2; grid-row: 2; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+
+    .tips {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+    }
+
+    /* 过关弹窗遮罩 */
+    .win-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 10;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .win-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .win-badge {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--success-light);
+      color: var(--success);
+      font-size: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
+      animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .win-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .win-summary {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    .win-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .win-actions .btn {
+      padding: 0 20px;
+      flex: unset;
+    }
+
+    @media (max-width: 520px) {
+      :root {
+        --cell-size: 38px;
+      }
+      .app-container {
+        padding: 16px;
+        gap: 14px;
+      }
+      .stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stage-wrapper {
+        padding: 12px;
+        min-height: 270px;
+      }
+      .kbd-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部栏 -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">箱</div>
+        <div class="brand-title">
+          <h1>推箱子 Sokoban</h1>
+          <p id="levelSubtitle">第 1 关 · 初试身手</p>
+        </div>
+      </div>
+
+      <div class="level-nav">
+        <button class="icon-btn" id="prevLevelBtn" title="上一关">◀</button>
+        <select class="level-select" id="levelSelect" aria-label="选择关卡"></select>
+        <button class="icon-btn" id="nextLevelBtn" title="下一关">▶</button>
+      </div>
+    </header>
+
+    <!-- 统计数据 -->
+    <section class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-label">移动步数</span>
+        <span class="stat-value" id="statMoves">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">推箱次数</span>
+        <span class="stat-value" id="statPushes">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">本关用时</span>
+        <span class="stat-value" id="statTime">00:00</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">最佳步数</span>
+        <span class="stat-value highlight" id="statBest">--</span>
+      </div>
+    </section>
+
+    <!-- 游戏主舞台 -->
+    <main class="stage-wrapper" id="stageWrapper">
+      <div class="board" id="board"></div>
+
+      <!-- 过关浮层 -->
+      <div class="win-overlay" id="winOverlay">
+        <div class="win-badge">🎉</div>
+        <div class="win-title" id="winTitle">恭喜通关！</div>
+        <div class="win-summary" id="winSummary">用时 00:12 · 共 18 步</div>
+        <div class="win-actions">
+          <button class="btn" id="winReplayBtn">再玩一次</button>
+          <button class="btn btn-primary" id="winNextBtn">下一关 →</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 操作栏 -->
+    <div class="controls-row">
+      <div class="action-group">
+        <button class="btn" id="undoBtn" disabled>
+          <span>↩ 撤销一步</span>
+          <span class="kbd-hint">Z</span>
+        </button>
+        <button class="btn" id="resetBtn">
+          <span>↻ 重玩本关</span>
+          <span class="kbd-hint">R</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 触屏方向键 -->
+    <section class="touch-section">
+      <div class="dpad">
+        <button class="dpad-btn dpad-up" data-dir="up" aria-label="向上">▲</button>
+        <button class="dpad-btn dpad-left" data-dir="left" aria-label="向左">◀</button>
+        <button class="dpad-btn dpad-down" data-dir="down" aria-label="向下">▼</button>
+        <button class="dpad-btn dpad-right" data-dir="right" aria-label="向右">▶</button>
+      </div>
+      <p class="tips">支持键盘方向键 / WASD、点击屏幕按键或在棋盘上滑动操作</p>
+    </section>
+  </div>
+
+  <script>
+    /**
+     * 8 道由浅入深的经典可解关卡
+     * 符号说明：
+     * '#' 墙壁 | ' ' 空地 | '.' 目标点 | '$' 箱子 | '*' 目标点上的箱子 | '@' 玩家 | '+' 目标点上的玩家
+     */
+    const LEVELS = [
+      {
+        name: "初试身手",
+        map: [
+          "  #####  ",
+          "  # . #  ",
+          "### $ ###",
+          "#. $@$ .#",
+          "### $ ###",
+          "  # . #  ",
+          "  #####  "
+        ]
+      },
+      {
+        name: "转角腾挪",
+        map: [
+          "########",
+          "#      #",
+          "# .$$@ #",
+          "# .  # #",
+          "# . $  #",
+          "########"
+        ]
+      },
+      {
+        name: "狭路相逢",
+        map: [
+          "####  ",
+          "# .#  ",
+          "#  ###",
+          "#*@  #",
+          "#  $ #",
+          "#  ###",
+          "####  "
+        ]
+      },
+      {
+        name: "双箱归位",
+        map: [
+          "######",
+          "#    #",
+          "# #@ #",
+          "# $* #",
+          "# .* #",
+          "#    #",
+          "######"
+        ]
+      },
+      {
+        name: "回廊借道",
+        map: [
+          "  ####   ",
+          "###  ####",
+          "#     $ #",
+          "# #  #$ #",
+          "# . .#@ #",
+          "#########"
+        ]
+      },
+      {
+        name: "步步为营",
+        map: [
+          "########",
+          "#      #",
+          "# .**$@#",
+          "#      #",
+          "#####  #",
+          "    ####"
+        ]
+      },
+      {
+        name: "对称迷局",
+        map: [
+          " #######",
+          " #     #",
+          " # .$. #",
+          "## $@$ #",
+          "#  .$. #",
+          "#      #",
+          "########"
+        ]
+      },
+      {
+        name: "曲径通幽",
+        map: [
+          "######  ###",
+          "#  . # ##@#",
+          "#  . ###  #",
+          "#  $      #",
+          "#    # $ ##",
+          "###### $ # ",
+          "     # . # ",
+          "     ##### "
+        ]
+      }
+    ];
+
+    const STORAGE_KEY = "sokoban_modern_records_v1";
+
+    // 状态变量
+    let currentLevelIndex = 0;
+    let rows = 0;
+    let cols = 0;
+    let staticGrid = []; // 'void' | 'wall' | 'floor' | 'target'
+    let player = { r: 0, c: 0, dir: "down" };
+    let boxes = []; // [{ id, r, c }]
+    let history = []; // 历史栈用于撤销
+    let movesCount = 0;
+    let pushesCount = 0;
+    let elapsedSeconds = 0;
+    let timerInterval = null;
+    let timerStarted = false;
+    let isWon = false;
+    let records = loadRecords();
+
+    // DOM 元素引用
+    const boardEl = document.getElementById("board");
+    const levelSelectEl = document.getElementById("levelSelect");
+    const levelSubtitleEl = document.getElementById("levelSubtitle");
+    const prevLevelBtn = document.getElementById("prevLevelBtn");
+    const nextLevelBtn = document.getElementById("nextLevelBtn");
+    const statMovesEl = document.getElementById("statMoves");
+    const statPushesEl = document.getElementById("statPushes");
+    const statTimeEl = document.getElementById("statTime");
+    const statBestEl = document.getElementById("statBest");
+    const undoBtn = document.getElementById("undoBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const winOverlay = document.getElementById("winOverlay");
+    const winTitle = document.getElementById("winTitle");
+    const winSummary = document.getElementById("winSummary");
+    const winReplayBtn = document.getElementById("winReplayBtn");
+    const winNextBtn = document.getElementById("winNextBtn");
+    const stageWrapper = document.getElementById("stageWrapper");
+
+    let entityLayerEl = null;
+    let playerEl = null;
+    let playerEyesEl = null;
+    let boxEls = new Map();
+
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveRecord(levelIdx, moves) {
+      const prev = records[levelIdx];
+      if (!prev || moves < prev) {
+        records[levelIdx] = moves;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        } catch (e) {}
+      }
+    }
+
+    function populateLevelSelect() {
+      levelSelectEl.innerHTML = "";
+      LEVELS.forEach((lvl, idx) => {
+        const opt = document.createElement("option");
+        const solvedMark = records[idx] ? " ✓" : "";
+        opt.value = idx;
+        opt.textContent = `第 ${idx + 1} 关：${lvl.name}${solvedMark}`;
+        levelSelectEl.appendChild(opt);
+      });
+      levelSelectEl.value = currentLevelIndex;
+    }
+
+    // 解析关卡地图并标记外围空白区域为 void
+    function parseLevel(index) {
+      const rawMap = LEVELS[index].map;
+      rows = rawMap.length;
+      cols = Math.max(...rawMap.map((line) => line.length));
+
+      const charGrid = rawMap.map((line) => line.padEnd(cols, " ").split(""));
+      staticGrid = Array.from({ length: rows }, () => Array(cols).fill("floor"));
+      boxes = [];
+      let boxIdCounter = 1;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const ch = charGrid[r][c];
+          if (ch === "#") {
+            staticGrid[r][c] = "wall";
+          } else if (ch === ".") {
+            staticGrid[r][c] = "target";
+          } else if (ch === "$") {
+            staticGrid[r][c] = "floor";
+            boxes.push({ id: boxIdCounter++, r, c });
+          } else if (ch === "*") {
+            staticGrid[r][c] = "target";
+            boxes.push({ id: boxIdCounter++, r, c });
+          } else if (ch === "@") {
+            staticGrid[r][c] = "floor";
+            player = { r, c, dir: "down" };
+          } else if (ch === "+") {
+            staticGrid[r][c] = "target";
+            player = { r, c, dir: "down" };
+          } else {
+            staticGrid[r][c] = "floor";
+          }
+        }
+      }
+
+      // 从边界 BFS 将墙外的空格标记为 void，提升视觉美观度
+      const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+      const queue = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if ((r === 0 || r === rows - 1 || c === 0 || c === cols - 1) && staticGrid[r][c] === "floor") {
+            visited[r][c] = true;
+            queue.push([r, c]);
+          }
+        }
+      }
+      while (queue.length > 0) {
+        const [cr, cc] = queue.shift();
+        staticGrid[cr][cc] = "void";
+        for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const nr = cr + dr;
+          const nc = cc + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited[nr][nc] && staticGrid[nr][nc] === "floor") {
+            visited[nr][nc] = true;
+            queue.push([nr, nc]);
+          }
+        }
+      }
+    }
+
+    function initLevel(index) {
+      currentLevelIndex = index;
+      stopTimer();
+      timerStarted = false;
+      elapsedSeconds = 0;
+      movesCount = 0;
+      pushesCount = 0;
+      history = [];
+      isWon = false;
+
+      parseLevel(index);
+      populateLevelSelect();
+      levelSubtitleEl.textContent = `第 ${index + 1} 关 · ${LEVELS[index].name}`;
+      prevLevelBtn.disabled = index === 0;
+      nextLevelBtn.disabled = index === LEVELS.length - 1;
+      winOverlay.classList.remove("visible");
+
+      buildBoardDOM();
+      updateEntitiesDOM();
+      updateStatsUI();
+    }
+
+    function buildBoardDOM() {
+      boardEl.innerHTML = "";
+      boardEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+      boardEl.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement("div");
+          cell.className = `cell ${staticGrid[r][c]}`;
+          boardEl.appendChild(cell);
+        }
+      }
+
+      entityLayerEl = document.createElement("div");
+      entityLayerEl.className = "entity-layer";
+      boardEl.appendChild(entityLayerEl);
+
+      boxEls.clear();
+      boxes.forEach((b) => {
+        const bEl = document.createElement("div");
+        bEl.className = "box";
+        bEl.innerHTML = `<div class="box-inner"></div>`;
+        entityLayerEl.appendChild(bEl);
+        boxEls.set(b.id, bEl);
+      });
+
+      playerEl = document.createElement("div");
+      playerEl.className = "player";
+      playerEl.innerHTML = `
+        <div class="player-inner">
+          <div class="player-eyes" id="playerEyes">
+            <div class="player-eye"></div>
+            <div class="player-eye"></div>
+          </div>
+        </div>
+      `;
+      entityLayerEl.appendChild(playerEl);
+      playerEyesEl = playerEl.querySelector("#playerEyes");
+    }
+
+    function getStepPixels() {
+      const firstCell = boardEl.querySelector(".cell");
+      const size = firstCell ? firstCell.offsetWidth : 48;
+      return size + 2; // 单元格尺寸 + 2px grid gap
+    }
+
+    function updateEntitiesDOM() {
+      const step = getStepPixels();
+
+      boxes.forEach((b) => {
+        const el = boxEls.get(b.id);
+        if (!el) return;
+        el.style.transform = `translate(${b.c * step}px, ${b.r * step}px)`;
+        const onTarget = staticGrid[b.r][b.c] === "target";
+        el.classList.toggle("on-target", onTarget);
+      });
+
+      if (playerEl) {
+        playerEl.style.transform = `translate(${player.c * step}px, ${player.r * step}px)`;
+      }
+
+      if (playerEyesEl) {
+        const offsets = {
+          up: "translate(0px, -4px)",
+          down: "translate(0px, 3px)",
+          left: "translate(-4px, 0px)",
+          right: "translate(4px, 0px)"
+        };
+        playerEyesEl.style.transform = offsets[player.dir] || "translate(0, 0)";
+      }
+    }
+
+    function formatTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, "0");
+      const s = String(sec % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function startTimerIfNeeded() {
+      if (timerStarted || isWon) return;
+      timerStarted = true;
+      timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        statTimeEl.textContent = formatTime(elapsedSeconds);
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function updateStatsUI() {
+      statMovesEl.textContent = movesCount;
+      statPushesEl.textContent = pushesCount;
+      statTimeEl.textContent = formatTime(elapsedSeconds);
+      const best = records[currentLevelIndex];
+      statBestEl.textContent = best ? `${best} 步` : "--";
+      undoBtn.disabled = history.length === 0 || isWon;
+    }
+
+    function findBoxAt(r, c) {
+      return boxes.find((b) => b.r === r && b.c === c);
+    }
+
+    function triggerBumpAnimation() {
+      if (!playerEl) return;
+      playerEl.classList.remove("bump");
+      void playerEl.offsetWidth;
+      playerEl.classList.add("bump");
+    }
+
+    function tryMove(dir) {
+      if (isWon) return;
+
+      const delta = {
+        up: [-1, 0],
+        down: [1, 0],
+        left: [0, -1],
+        right: [0, 1]
+      }[dir];
+      if (!delta) return;
+
+      player.dir = dir;
+      const [dr, dc] = delta;
+      const nr = player.r + dr;
+      const nc = player.c + dc;
+
+      // 撞墙检查
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols || staticGrid[nr][nc] === "wall") {
+        updateEntitiesDOM();
+        triggerBumpAnimation();
+        return;
+      }
+
+      const blockingBox = findBoxAt(nr, nc);
+      if (blockingBox) {
+        const br = nr + dr;
+        const bc = nc + dc;
+        if (
+          br < 0 ||
+          br >= rows ||
+          bc < 0 ||
+          bc >= cols ||
+          staticGrid[br][bc] === "wall" ||
+          findBoxAt(br, bc)
+        ) {
+          updateEntitiesDOM();
+          triggerBumpAnimation();
+          return;
+        }
+
+        // 记录历史快照
+        history.push({
+          player: { ...player },
+          boxes: boxes.map((b) => ({ ...b })),
+          movesCount,
+          pushesCount
+        });
+
+        blockingBox.r = br;
+        blockingBox.c = bc;
+        player.r = nr;
+        player.c = nc;
+        movesCount++;
+        pushesCount++;
+      } else {
+        history.push({
+          player: { ...player },
+          boxes: boxes.map((b) => ({ ...b })),
+          movesCount,
+          pushesCount
+        });
+
+        player.r = nr;
+        player.c = nc;
+        movesCount++;
+      }
+
+      startTimerIfNeeded();
+      updateEntitiesDOM();
+      updateStatsUI();
+      checkWinCondition();
+    }
+
+    function undoMove() {
+      if (history.length === 0 || isWon) return;
+      const last = history.pop();
+      player = last.player;
+      boxes = last.boxes;
+      movesCount = last.movesCount;
+      pushesCount = last.pushesCount;
+      updateEntitiesDOM();
+      updateStatsUI();
+    }
+
+    function checkWinCondition() {
+      const allOnTarget = boxes.every((b) => staticGrid[b.r][b.c] === "target");
+      if (!allOnTarget) return;
+
+      isWon = true;
+      stopTimer();
+      saveRecord(currentLevelIndex, movesCount);
+      populateLevelSelect();
+      updateStatsUI();
+
+      const hasNext = currentLevelIndex < LEVELS.length - 1;
+      winTitle.textContent = hasNext ? `第 ${currentLevelIndex + 1} 关通关！` : "全部关卡通关！🏆";
+      winSummary.textContent = `用时 ${formatTime(elapsedSeconds)} · 移动 ${movesCount} 步 · 推箱 ${pushesCount} 次`;
+      winNextBtn.style.display = hasNext ? "inline-flex" : "none";
+
+      setTimeout(() => {
+        winOverlay.classList.add("visible");
+      }, 160);
+    }
+
+    // 键盘事件监听
+    window.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === "z") {
+          e.preventDefault();
+          undoMove();
+        }
+        return;
+      }
+
+      const keyMap = {
+        ArrowUp: "up",
+        KeyW: "up",
+        ArrowDown: "down",
+        KeyS: "down",
+        ArrowLeft: "left",
+        KeyA: "left",
+        ArrowRight: "right",
+        KeyD: "right"
+      };
+
+      if (keyMap[e.code]) {
+        e.preventDefault();
+        tryMove(keyMap[e.code]);
+      } else if (e.code === "KeyZ" || e.code === "KeyU") {
+        e.preventDefault();
+        undoMove();
+      } else if (e.code === "KeyR") {
+        e.preventDefault();
+        initLevel(currentLevelIndex);
+      } else if (e.code === "Enter" && isWon && currentLevelIndex < LEVELS.length - 1) {
+        e.preventDefault();
+        initLevel(currentLevelIndex + 1);
+      }
+    });
+
+    // 按钮与关卡切换事件
+    levelSelectEl.addEventListener("change", (e) => {
+      initLevel(Number(e.target.value));
+      levelSelectEl.blur();
+    });
+
+    prevLevelBtn.addEventListener("click", () => {
+      if (currentLevelIndex > 0) initLevel(currentLevelIndex - 1);
+    });
+
+    nextLevelBtn.addEventListener("click", () => {
+      if (currentLevelIndex < LEVELS.length - 1) initLevel(currentLevelIndex + 1);
+    });
+
+    undoBtn.addEventListener("click", undoMove);
+    resetBtn.addEventListener("click", () => initLevel(currentLevelIndex));
+    winReplayBtn.addEventListener("click", () => initLevel(currentLevelIndex));
+    winNextBtn.addEventListener("click", () => {
+      if (currentLevelIndex < LEVELS.length - 1) {
+        initLevel(currentLevelIndex + 1);
+      }
+    });
+
+    // 屏幕虚拟方向键
+    document.querySelectorAll(".dpad-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tryMove(btn.dataset.dir);
+      });
+    });
+
+    // 棋盘触摸滑动手势支持
+    let touchStartX = 0;
+    let touchStartY = 0;
+    stageWrapper.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    stageWrapper.addEventListener("touchend", (e) => {
+      if (e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (Math.max(absX, absY) < 24) return;
+      if (absX > absY) {
+        tryMove(dx > 0 ? "right" : "left");
+      } else {
+        tryMove(dy > 0 ? "down" : "up");
+      }
+    }, { passive: true });
+
+    // 窗口尺寸变化时重算坐标
+    window.addEventListener("resize", () => {
+      updateEntitiesDOM();
+    });
+
+    // 启动第 1 关
+    initLevel(0);
+  </script>
+</body>
+</html>
